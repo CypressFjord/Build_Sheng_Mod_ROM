@@ -231,6 +231,34 @@ mkdir -p "$GITHUB_WORKSPACE"/images
 cat "$GITHUB_WORKSPACE"/files/mi_ext_build.prop >> "$GITHUB_WORKSPACE"/images/mi_ext/etc/build.prop
 cat "$GITHUB_WORKSPACE"/files/system_ext_build.prop >> "$GITHUB_WORKSPACE"/images/system_ext/etc/build.prop
 End_Time 复制通用文件
+#修改mi_ext和product的设备标识
+echo -e "${Red}- 开始修改mi_ext和product的设备标识${NC}"
+Start_Time
+mi_ext_prop="$GITHUB_WORKSPACE"/images/mi_ext/etc/build.prop
+product_prop="$GITHUB_WORKSPACE"/images/product/etc/build.prop
+if [ -f "$mi_ext_prop" ]; then
+    if grep -qxF 'ro.video.product.device=sheng' "$mi_ext_prop"; then
+        echo -e "${Yellow}- 跳过: ro.video.product.device属性是sheng${NC}"
+    elif grep -qxF 'ro.video.product.device=piano' "$mi_ext_prop"; then
+        sed -i 's/^ro\.video\.product\.device=piano$/ro.video.product.device=sheng/' "$mi_ext_prop"
+        echo -e "${Green}- 已修改ro.video.product.device属性${NC}"
+    else
+        echo -e "${Yellow}- 警告: 未找到ro.video.product.device=piano${NC}"
+    fi
+else
+    echo -e "${Yellow}- 警告: 未找到mi_ext/etc/build.prop，跳过${NC}"
+fi
+if [ -f "$product_prop" ]; then
+    if grep -qF 'piano' "$product_prop"; then
+        sed -i 's/piano/sheng/g' "$product_prop"
+        echo -e "${Green}- product/etc/build.prop中已将piano全部替换为sheng${NC}"
+    else
+        echo -e "${Yellow}- 跳过: product/etc/build.prop中未找到piano${NC}"
+    fi
+else
+    echo -e "${Yellow}- 警告: 未找到product/etc/build.prop，跳过${NC}"
+fi
+End_Time 修改mi_ext和product的设备标识
 #修改build.prop代码
 echo -e "${Red}- 开始修改build.prop代码${NC}"
 Start_Time
