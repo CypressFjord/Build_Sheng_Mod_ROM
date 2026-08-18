@@ -419,41 +419,6 @@ else
 fi
 End_Time 添加传送门MIUIContentExtension权限
 End_Time 修改privapp-permissions-product.xml
-#修复小米互传软重启miui-wifi-service.jar
-echo -e "${Red}- 开始修复小米互传软重启miui-wifi-service.jar${NC}"
-Start_Time
-wifi_jar="$GITHUB_WORKSPACE"/images/system_ext/framework/miui-wifi-service.jar
-tools_dir="$GITHUB_WORKSPACE"/tools/smali_patch
-work_dir="$GITHUB_WORKSPACE"/temp_wifi_patch
-smali_tgt="${work_dir}/com/android/server/wifi/p2p/WifiP2pServiceImplInjector.smali"
-if [ ! -f "$wifi_jar" ]; then
-    echo -e "${Yellow}- 警告: 未找到miui-wifi-service.jar，跳过修改${NC}"
-elif [ ! -f "$tools_dir/baksmali.jar" ] || [ ! -f "$tools_dir/smali.jar" ]; then
-    echo -e "${Yellow}- 警告: 缺少 baksmali.jar或smali.jar${NC}"
-else
-    echo -e "${Red}- 正在处理: miui-wifi-service.jar${NC}"
-    rm -rf "$work_dir"
-    if java -jar "$tools_dir/baksmali.jar" d "$wifi_jar" -o "$work_dir" >/dev/null 2>&1 && [ -f "$smali_tgt" ]; then
-        sed -i '/^\.method public saveGroupInterfaceMacAddress/,/^\.end method/c\
-        .method public saveGroupInterfaceMacAddress(Landroid/net/wifi/p2p/WifiP2pGroup;)V\
-            .registers 4\
-            const-string v0, "02:00:00:00:00:00"\
-            iput-object v0, p0, Lcom/android/server/wifi/p2p/WifiP2pServiceImplInjector;->mP2pGroupInterfaceMacAddr:Ljava/lang/String;\
-            return-void\
-        .end method' "$smali_tgt"
-        if grep -q '"02:00:00:00:00:00"' "$smali_tgt" && \
-           java -jar "$tools_dir/smali.jar" a "$work_dir" -o "$work_dir/classes.dex" >/dev/null 2>&1; then           
-            zip -j -u -q "$wifi_jar" "$work_dir/classes.dex"
-            echo -e "${Green}- miui-wifi-service.jar修改成功${NC}"
-        else
-            echo -e "${Yellow}- 警告: classes.dex回编译失败${NC}"
-        fi
-    else
-        echo -e "${Yellow}- 警告: baksmali反编译失败或未找到目标文件${NC}"
-    fi
-    rm -rf "$work_dir"
-fi
-End_Time 修复小米互传软重启miui-wifi-service.jar
 #合并校验替换MiuiCamera相关文件
 echo -e "${Red}- 开始合并校验替换MiuiCamera相关文件${NC}"
 Start_Time
