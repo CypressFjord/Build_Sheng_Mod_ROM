@@ -7,6 +7,9 @@ ro.sf.lcd_density=400
 persist.miui.density_v2=400
 #cpq
 persist.sys.stability.smartfocusio=on
+#禁用iorapd
+persist.sys.stability.PrereadEnable=false
+persist.sys.stability.PtePrereadEnable=false
 #超清HDR
 persist.sys.support_ultra_hdr=true
 #超分辨率增强
