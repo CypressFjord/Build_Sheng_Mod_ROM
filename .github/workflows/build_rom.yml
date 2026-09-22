@@ -5,7 +5,7 @@ on:
       VENDOR_URL:
         description: "底包下载地址"
         required: true
-        default: 'https://bkt-sgp-miui-ota-update-alisgp.oss-ap-southeast-1.aliyuncs.com/OS3.0.304.0.WNXCNXM/sheng-ota_full-OS3.0.304.0.WNXCNXM-user-16.0-57e0a09d42.zip'
+        default: 'https://bkt-sgp-miui-ota-update-alisgp.oss-ap-southeast-1.aliyuncs.com/OS3.0.306.0.WNXCNXM/sheng-ota_full-OS3.0.306.0.WNXCNXM-user-16.0-997f7fa308.zip'
       SYSTEM_URL:
         description: "移植包下载地址"
         required: true
