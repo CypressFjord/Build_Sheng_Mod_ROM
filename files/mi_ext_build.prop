@@ -11,6 +11,8 @@ persist.sys.stability.smartfocusio=on
 persist.iorapd.log.verbose=false
 persist.sys.stability.PrereadEnable=false
 persist.sys.stability.PtePrereadEnable=false
+#修复锁屏模糊闪退
+ro.hwui.use_vulkan=true
 #HW GLES
 persist.sys.force_sw_gles=0
 #ramdumps

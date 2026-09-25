@@ -231,6 +231,10 @@ mkdir -p "$GITHUB_WORKSPACE"/images
 cat "$GITHUB_WORKSPACE"/files/mi_ext_build.prop >> "$GITHUB_WORKSPACE"/images/mi_ext/etc/build.prop
 cat "$GITHUB_WORKSPACE"/files/system_ext_build.prop >> "$GITHUB_WORKSPACE"/images/system_ext/etc/build.prop
 End_Time 复制通用文件
+#不完美修复HyperOS的AI相关智能体服务
+echo -e "${Red}- 开始不完美修复HyperOS的AI相关智能体服务${NC}"
+rm -rf "$GITHUB_WORKSPACE"/images/mi_ext/product/ai/taiyi
+End_Time 不完美修复HyperOS的AI相关智能体服务
 #修改mi_ext和product的设备标识
 echo -e "${Red}- 开始修改mi_ext和product的设备标识${NC}"
 Start_Time
@@ -296,6 +300,15 @@ comment_prop "$PRODUCT" "ro.miui.cust_erofs"
 comment_prop "$PRODUCT" "ro.miui.preinstall_to_data"
 comment_prop "$PRODUCT" "ro.miui.cust_img_path"
 End_Time 修改build.prop代码
+#修复因缺少SELinux规则导致部分权限被拒
+echo -e "${Red}- 开始修复因缺少SELinux规则导致部分权限被拒${NC}"
+Start_Time
+echo "(allow graphicsengine servicemanager (binder (call)))" | sudo tee -a "$GITHUB_WORKSPACE"/images/system_ext/etc/selinux/system_ext_sepolicy.cil
+echo "(allow graphicsengine hwservicemanager_prop (file (read getattr map open)))" | sudo tee -a "$GITHUB_WORKSPACE"/images/system_ext/etc/selinux/system_ext_sepolicy.cil
+echo "(allow graphicsengine hwservicemanager (binder (call)))" | sudo tee -a "$GITHUB_WORKSPACE"/images/system_ext/etc/selinux/system_ext_sepolicy.cil
+echo "(allow graphicsengine hal_graphics_mapper_hwservice (hwservice_manager (find)))" | sudo tee -a "$GITHUB_WORKSPACE"/images/system_ext/etc/selinux/system_ext_sepolicy.cil
+echo "(allow graphicsengine vendor_hal_qspmhal_hwservice (hwservice_manager (find)))" | sudo tee -a "$GITHUB_WORKSPACE"/images/system_ext/etc/selinux/system_ext_sepolicy.cil
+End_Time 修复因缺少SELinux规则导致部分权限被拒
 #解锁谷歌国区限制和谷歌快速分享
 echo -e "${Red}- 开始解锁谷歌国区限制和谷歌快速分享${NC}"
 Start_Time
@@ -360,39 +373,6 @@ else
 fi
 End_Time 添加XiaomiPad6SPro12.4Patch
 End_Time 修改sheng.xml
-##修改privapp-permissions-product.xml
-echo -e "${Red}- 开始修改privapp-permissions-product.xml${NC}"
-Start_Time
-#检测并添加WRITE_MEDIA_STORAGE权限
-echo -e "${Red}- 开始检测并添加WRITE_MEDIA_STORAGE权限${NC}"
-Start_Time
-privapp_xml="$GITHUB_WORKSPACE"/images/product/etc/permissions/privapp-permissions-product.xml
-if [ -f "$privapp_xml" ]; then
-    if awk '
-        /<privapp-permissions package="com.miui.securitycenter">/ { inblock=1 }
-        inblock && /<permission name="android.permission.WRITE_MEDIA_STORAGE" \/>/ { found=1; exit }
-        inblock && /<\/privapp-permissions>/ { exit }
-        END { exit !found }
-    ' "$privapp_xml"; then
-        echo -e "${Yellow}- 跳过: WRITE_MEDIA_STORAGE权限存在${NC}"
-    else
-        awk '
-        /<privapp-permissions package="com.miui.securitycenter">/ { inblock=1; found=0 }
-        inblock && /<permission name="android.permission.WRITE_MEDIA_STORAGE" \/>/ { found=1 }
-        inblock && /<\/privapp-permissions>/ {
-            if (!found) {
-                print "      <permission name=\"android.permission.WRITE_MEDIA_STORAGE\" />"
-            }
-            inblock=0
-        }
-        { print }
-        ' "$privapp_xml" > "${privapp_xml}.tmp" && mv "${privapp_xml}.tmp" "$privapp_xml"
-        echo -e "${Green}- 已添加WRITE_MEDIA_STORAGE权限${NC}"
-    fi
-else
-    echo -e "${Yellow}- 警告: 未找到privapp-permissions-product.xml，跳过此步骤${NC}"
-fi
-End_Time 检测并添加WRITE_MEDIA_STORAGE权限
 #添加传送门MIUIContentExtension权限
 echo -e "${Red}- 开始添加传送门MIUIContentExtension权限${NC}"
 Start_Time
@@ -418,22 +398,28 @@ else
     echo -e "${Yellow}- 警告: 未找到privapp-permissions-product.xml，跳过此步骤${NC}"
 fi
 End_Time 添加传送门MIUIContentExtension权限
-End_Time 修改privapp-permissions-product.xml
-#合并替换MiuiCamera相关文件
-echo -e "${Red}- 开始合并替换MiuiCamera相关文件${NC}"
+#修复PC级应用无法使用的问题
+echo -e "${Red}- 开始修复PC级应用无法使用的问题${NC}"
 Start_Time
-camera_src_dir="$GITHUB_WORKSPACE"/files/MiuiCamera_parts
-camera_dst_dir="$GITHUB_WORKSPACE"/images/product/priv-app/MiuiCamera
-mkdir -p "$camera_dst_dir"
-if cat "$camera_src_dir"/MiuiCamera.apk.part* > "$camera_dst_dir/MiuiCamera.apk.tmp"; then
-    mv -f "$camera_dst_dir/MiuiCamera.apk.tmp" "$camera_dst_dir/MiuiCamera.apk"
-    cp -rf "$camera_src_dir/oat" "$camera_dst_dir/"
-    echo -e "${Green}- MiuiCamera相关文件替换成功${NC}"
+newpc_dir="$GITHUB_WORKSPACE"/files/newpc
+if [ -f "$ODM" ]; then
+    if grep -qxF 'ro.vendor.mslg.rootfs.version=rootfs-26.04.02.tgz' "$ODM"; then
+        echo -e "${Yellow}- 跳过: 值已是rootfs-26.04.02.tgz${NC}"
+    elif grep -qxF 'ro.vendor.mslg.rootfs.version=rootfs-25.09.04.tgz' "$ODM"; then
+        sed -i 's/^ro\.vendor\.mslg\.rootfs\.version=rootfs-25\.09\.04\.tgz$/ro.vendor.mslg.rootfs.version=rootfs-26.04.02.tgz/' "$ODM"
+        echo -e "${Green}- 值已修改为rootfs-26.04.02.tgz${NC}"
+    else
+        echo -e "${Yellow}- 警告: 未找到ro.vendor.mslg.rootfs.version=rootfs-25.09.04.tgz${NC}"
+    fi
 else
-    rm -f "$camera_dst_dir/MiuiCamera.apk.tmp"
-    echo -e "${Yellow}- MiuiCamera.apk合并失败，保留原文件${NC}"
+    echo -e "${Yellow}- 警告: 未找到odm/etc/build.prop，跳过${NC}"
 fi
-End_Time 合并替换MiuiCamera相关文件
+sudo cp -rf "$newpc_dir"/odm/* "$GITHUB_WORKSPACE"/images/odm/
+sudo rm -rf "$GITHUB_WORKSPACE"/images/odm/etc/assets/rootfs-25.09.04.tgz
+echo "/data/vendor/rootfs(/.*)?     u:object_r:mslg_rootfs_file:s0" | sudo tee -a "$GITHUB_WORKSPACE"/images/vendor/etc/selinux/vendor_file_contexts
+echo "/odm/etc/assets/rootfs-26\.04\.02\.tgz u:object_r:vendor_file:s0" | sudo tee -a "$GITHUB_WORKSPACE"/images/config/odm_file_contexts
+echo "odm/etc/assets/rootfs-26.04.02.tgz 0 0 0644" | sudo tee -a "$GITHUB_WORKSPACE"/images/config/odm_fs_config
+End_Time 修复PC级应用无法使用的问题
 ##内置水龙优化
 echo -e "${Red}- 开始内置水龙优化${NC}"
 Start_Time
@@ -622,8 +608,8 @@ rm -rf "$GITHUB_WORKSPACE"/images/product/data-app/MIUIEmail
 rm -rf "$GITHUB_WORKSPACE"/images/product/data-app/MIUIGameCenterPad
 rm -rf "$GITHUB_WORKSPACE"/images/product/data-app/MIUIHuanji
 rm -rf "$GITHUB_WORKSPACE"/images/product/data-app/MIUIMusicPAD
-rm -rf "$GITHUB_WORKSPACE"/images/product/data-app/MIUISecurityManager
 rm -rf "$GITHUB_WORKSPACE"/images/product/data-app/Padapp
+rm -rf "$GITHUB_WORKSPACE"/images/product/data-app/OS4VipAccountPad
 rm -rf "$GITHUB_WORKSPACE"/images/product/data-app/SmartHome
 rm -rf "$GITHUB_WORKSPACE"/images/product/data-app/WpsLauncher
 rm -rf "$GITHUB_WORKSPACE"/images/product/data-app/XMRemoteController

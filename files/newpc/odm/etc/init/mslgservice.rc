@@ -1,0 +1,147 @@
+on post-fs-data
+    #mkdir /data/vendor/mslg 0771 root root
+    mkdir /data/vendor/rootfs 0777 root root
+    mkdir /data/vendor/rootfs/tablet 0771 root root
+    mkdir /data/vendor/rootfs/docker_storage 0444 root root
+    mkdir /data/vendor/rootfs/opt 0771 root root
+    mkdir /data/vendor/rootfs/opt/kingsoft 0771 root root
+    mkdir /data/vendor/rootfs/opt/apps 0771 root root
+    mkdir /data/vendor/rootfs/opt/zwcad2025 0771 root root
+    mkdir  /dev/shm 0755 root system
+    mkdir  /dev/msl 0777 root system
+    mkdir  /dev/msl/rdp 0777 root system
+    restorecon /dev/shm
+    restorecon /dev/msl/rdp
+
+on property:sys.boot_completed=1
+   setprop sys.mslg.mounted 0
+   stop mslgrootfs
+   start mslgservice
+
+on property:persist.vendor.unzip.mslgrootfs=enable && property:vendor.mslgrootfs.version=*
+    start tar_rootfs
+
+on property:persist.vendor.unzip.mslgrootfs=disable && property:vendor.mslgrootfs.isready=1
+    start losetup_rootfs
+
+on property:vendor.setup.mslgrootfs=1 && property:sys.boot_completed=1 && property:vendor.mslg.mslgusrimg=* && property:sys.mslg.mounted=1 && property:sys.mslg.restart=""
+    chown 7100 7100 /dev/shm
+    mount none /dev /data/vendor/rootfs/dev bind rec
+    mount none /sys /data/vendor/rootfs/sys bind rec
+    mount none /proc /data/vendor/rootfs/proc bind rec
+    mount none /dev/msl/rdp /data/vendor/rootfs/tmp/msl/rdp bind rec
+    mount erofs ${vendor.mslg.mslgkingsoftimg} /data/vendor/rootfs/opt/kingsoft ro
+    mount erofs ${vendor.mslg.mslgusrimg} /data/vendor/rootfs/usr ro
+    mount erofs ${vendor.mslg.mslgappsimg} /data/vendor/rootfs/opt/apps ro
+    mount erofs ${vendor.mslg.mslgzwcad2025img} /data/vendor/rootfs/opt/zwcad2025 ro
+    setprop sys.mslg.restart 1
+
+on property:vendor.setup.mslgrootfs=1 && property:sys.boot_completed=1 && property:vendor.mslg.mslgusrimg=* && property:sys.mslg.mounted=1 && property:sys.mslg.restart=1
+   umount /data/vendor/rootfs/tablet
+   umount /data/vendor/rootfs/home/xiaomi/.fonts
+   mount none /storage/self/primary /data/vendor/rootfs/tablet bind rec
+   mount none /storage/self/primary/HyperEngine/fonts /data/vendor/rootfs/home/xiaomi/.fonts bind rec
+   start mslgrootfs
+
+on property:vendor.setup.mslgrootfs=1 && property:sys.boot_completed=1 && property:vendor.mslg.mslgusrimg=* && property:sys.mslg.mounted=1 && property:sys.mslg.restart=0
+   stop mslgrootfs
+
+on property:sys.install.optimg=*
+    start losetup_optimg
+
+on property:sys.uninstall.optimg=*
+    umount /data/vendor/rootfs/opt/${sys.uninstall.optimg}
+
+on property:sys.mslg.wps.clearuserdata=1
+    start clearwpsdata
+    setprop sys.mslg.wps.clearuserdata ""
+
+on property:sys.mslg.caj.clearuserdata=1
+    start clearcajdata
+    setprop sys.mslg.caj.clearuserdata ""
+
+on property:sys.mslg.cad.clearuserdata=1
+    start clearcaddata
+    setprop sys.mslg.cad.clearuserdata ""
+
+on property:sys.mslg.setdns=1
+    start set_dns
+    setprop sys.mslg.setdns ""
+
+on property:vendor.mslg.optimg.mount=* && property:vendor.mslg.loop.mount=*
+    mount erofs ${vendor.mslg.loop.mount} ${vendor.mslg.optimg.mount} ro
+    setprop vendor.mslg.optimg.mount ""
+    setprop vendor.mslg.loop.mount ""
+    setprop sys.mslg.optimg.setup ""
+    setprop sys.install.optimg "null"
+
+on property:sys.mslg.attached=*
+    umount /data/vendor/rootfs/docker_storage
+    mount none ${sys.mslg.attached} /data/vendor/rootfs/docker_storage bind rec
+
+on property:sys.mslg.detached=1
+    umount /data/vendor/rootfs/docker_storage
+    setprop sys.mslg.detached 0
+
+service mslgservice /odm/bin/hw/mslgservice
+    class core
+    user root
+    seclabel u:r:mslgd:s0
+    disabled
+    oneshot
+
+service tar_rootfs /odm/bin/tar-rootfs.sh ${vendor.mslgrootfs.version}
+    class core
+    user root
+    seclabel u:r:mslgd:s0
+    disabled
+    oneshot
+
+service losetup_rootfs /odm/bin/losetup.sh "bootup"
+    class core
+    user root
+    seclabel u:r:mslgd:s0
+    disabled
+    oneshot
+
+service losetup_optimg /odm/bin/losetup.sh ${sys.install.optimg}
+    class core
+    user root
+    seclabel u:r:mslgd:s0
+    disabled
+    oneshot
+
+service mslgrootfs /odm/bin/start-rootfs.sh
+    class core
+    user root
+    seclabel u:r:mslgd:s0
+    disabled
+    oneshot
+
+service clearwpsdata /odm/bin/clear-wpsdata.sh
+    class core
+    user root
+    seclabel u:r:mslgd:s0
+    disabled
+    oneshot
+
+service clearcajdata /odm/bin/clear-cajdata.sh
+    class core
+    user root
+    seclabel u:r:mslgd:s0
+    disabled
+    oneshot
+
+service clearcaddata /odm/bin/clear-caddata.sh
+    class core
+    user root
+    seclabel u:r:mslgd:s0
+    disabled
+    oneshot
+
+service set_dns /odm/bin/set_dns.sh
+    class core
+    user root
+    seclabel u:r:mslgd:s0
+    disabled
+    oneshot
