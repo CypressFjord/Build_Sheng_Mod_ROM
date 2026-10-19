@@ -233,7 +233,14 @@ cat "$GITHUB_WORKSPACE"/files/system_ext_build.prop >> "$GITHUB_WORKSPACE"/image
 End_Time 复制通用文件
 #不完美修复HyperOS的AI相关智能体服务
 echo -e "${Red}- 开始不完美修复HyperOS的AI相关智能体服务${NC}"
+Start_Time
 rm -rf "$GITHUB_WORKSPACE"/images/mi_ext/product/ai/taiyi
+if [ -d "$GITHUB_WORKSPACE"/files/miaiservice ]; then
+    \cp -rf "$GITHUB_WORKSPACE"/files/miaiservice/* "$GITHUB_WORKSPACE"/images/
+    echo -e "${Green}- 已成功替换miaiservice${NC}"
+else
+    echo -e "${Yellow}- 跳过: files/miaiservice文件不存在${NC}"
+fi
 End_Time 不完美修复HyperOS的AI相关智能体服务
 #修改mi_ext和product的设备标识
 echo -e "${Red}- 开始修改mi_ext和product的设备标识${NC}"
